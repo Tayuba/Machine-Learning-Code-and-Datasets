@@ -10,7 +10,7 @@ print(df)
 
 
 
-# Predicting the Price
+# Predicting the Price and Training
 reg = linear_model.LinearRegression().fit(df[["Area"]],df.Price)
 
 # Plot Scatter Graph to Observe the data
