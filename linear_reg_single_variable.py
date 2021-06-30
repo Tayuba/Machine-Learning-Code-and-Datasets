@@ -9,7 +9,6 @@ df = pd.read_csv("price.csv")
 print(df)
 
 
-
 # Predicting the Price and Training
 reg = linear_model.LinearRegression().fit(df[["Area"]],df.Price)
 
@@ -36,7 +35,7 @@ print(area_lists)
 
 # Predict all the list of areas
 all_price= reg.predict(area_lists)
-# print(all_price)
+print(all_price)
 
 # Store the all the prices in a new column
 area_lists["Prices"] = all_price
