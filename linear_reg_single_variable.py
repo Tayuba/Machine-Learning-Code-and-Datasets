@@ -1,6 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn import linear_model
+import joblib
 
 
 # Reading CSV File with Pandas
@@ -42,3 +43,8 @@ print(area_lists)
 
 # Export all the prices to my csv file
 area_lists.to_csv("list_of_area.csv", index=False)
+
+# Saving Mode into a file
+joblib.dump(reg, "model_joblib")
+mj = joblib.load("model_joblib")
+print(mj.predict([[5000]]))

@@ -1,5 +1,5 @@
 import numpy as np
-import matplotlib.pyplot as plt
+
 
 """It better to understand what happens internally when using scikit, with this in mind i will calculte the gradient 
 descent using function"""
