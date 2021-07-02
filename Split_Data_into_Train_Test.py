@@ -63,5 +63,5 @@ predict_model = model.predict(x_test)
 print(predict_model)
 
 # Checking accuracy of the model
-accuracy_model = model.score(x_train, y_train)
+accuracy_model = model.score(x_test, y_test)
 print(accuracy_model)
