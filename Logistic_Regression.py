@@ -38,6 +38,7 @@ plt.show()
 # splitting data into train and test set
 x_train, x_test, y_train, y_test = train_test_split(Insurance_df[["Age"]], Insurance_df.Bought_Insurance, test_size=0.1)
 print(x_test)
+
 # create object of the model
 model = LogisticRegression()
 
