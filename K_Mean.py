@@ -107,7 +107,7 @@ for k in K_range:
     sse.append(K_mean.inertia_)
 print(sse)
 
-# Plotting K to visualize it
+# Plotting K to visualize it on graph
 plt.xlabel("K")
 plt.ylabel("Sum of Square Error")
 plt.plot(K_range, sse)
