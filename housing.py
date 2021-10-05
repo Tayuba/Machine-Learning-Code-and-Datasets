@@ -8,6 +8,9 @@ from zlib import crc32
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import StratifiedShuffleSplit
 from pandas.plotting import scatter_matrix
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OneHotEncoder
+
 """ Source of data"""
 DOWNLOAD_ROOT = "https://raw.githubusercontent.com/ageron/handson-ml2/master/"
 HOUSING_PATH = os.path.join("datasets", "housing")
@@ -62,9 +65,10 @@ housing["income_cat"] = pd.cut(housing["median_income"], bins=[0.,1.5,3.0,4.5,6.
 housing["income_cat"].hist()
 # plt.show()
 
+# Random split
 train_set, test_set = train_test_split(housing, test_size=0.2, random_state=42)
 
-
+# Stratified split
 split = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
 for train_index, test_index in split.split(housing, housing["income_cat"]):
     strat_train_set = housing.loc[train_index]
@@ -101,7 +105,7 @@ plt.legend()
 
 """Since the dataset is not that large, corr() can be compute to check the correlation between very attributes pairs"""
 corr_matrix = strat_train_set.corr()
-# correlatiom against median house value
+# correlation against median house value
 corr_MHV = corr_matrix["median_house_value"].sort_values(ascending=False)
 print(corr_MHV)
 
@@ -112,4 +116,51 @@ scatter_matrix(strat_train_set[attributes], figsize=(12, 8))
 
 """The most promising attribute to predict median house is median income,let zoom median income using scatter plot"""
 strat_train_set.plot(kind="scatter", x="median_income", y="median_house_value", alpha=0.1)
-plt.show()
+# plt.show()
+
+"""Attributes combinations"""
+strat_train_set["rooms_per_household"] = strat_train_set["total_rooms"]/strat_train_set["households"]
+strat_train_set["bedrooms_per_room"] = strat_train_set["total_bedrooms"]/strat_train_set["total_rooms"]
+strat_train_set["population_per_household"]=strat_train_set["population"]/strat_train_set["households"]
+# Now check the correlations between this new attributes with median house  value
+corr_matrix = strat_train_set.corr()
+corr_MHV = corr_matrix["median_house_value"].sort_values(ascending=False)
+print(corr_MHV)
+
+
+"""Divide the dataset into predictors(x) and labels(y)"""
+# Predictor
+x = strat_train_set.drop("median_house_value", axis=1)
+print(x.isna().sum())
+print()
+# Labels
+y = strat_train_set["median_house_value"].copy()
+print(y.isna().sum())
+
+"""Its clear that my predictor have some empty values in total bedrooms, i can either do three of these, 1.drop those
+rows, 2.drop the entire attribute or column or 3. find the median and fill it in the empty values"""
+# I will do the 3 by finding the median and filling it in the empty values row, to do this i have to drop the non
+# numerical attributes from the train dataset
+x_num = x.drop("ocean_proximity", axis=1)
+print(x_num)
+
+# Using SimpleImputer to find the meadian
+imputer = SimpleImputer(strategy="median")
+imputer.fit(x_num)
+
+
+# Replacing missing values
+x_replace = imputer.transform(x_num)
+print(len(x_replace))
+
+# Put transform values into dataframe
+x_dataframe = pd.DataFrame(x_replace, columns=x_num.columns)
+print(x_dataframe)
+
+
+"""Handling Text and Categorical Attributes using OneHotEncoder"""
+x_cat = strat_train_set[["ocean_proximity"]]
+
+OHT = OneHotEncoder()
+x_cat_OHT = OHT.fit_transform(x_cat).toarray()
+print(x_cat_OHT)
