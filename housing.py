@@ -7,7 +7,7 @@ import numpy as np
 from zlib import crc32
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import StratifiedShuffleSplit
-
+from pandas.plotting import scatter_matrix
 """ Source of data"""
 DOWNLOAD_ROOT = "https://raw.githubusercontent.com/ageron/handson-ml2/master/"
 HOUSING_PATH = os.path.join("datasets", "housing")
@@ -87,3 +87,29 @@ for drp in (strat_train_set, strat_test_set):
 """Create a copy of strat_train_set for manipulation purpose"""
 strat_train_set = strat_train_set.copy()
 print(strat_train_set)
+
+"""Visualizing Geographical Data"""
+strat_train_set.plot(kind="scatter", x="longitude", y="latitude", alpha=0.1)
+# plt.show()
+
+"""Now compare population and visualizing Geographical with the median house value"""
+strat_train_set.plot(kind="scatter", x="longitude", y="latitude", alpha=0.1, s=strat_train_set["population"]/100,
+                     label="population", figsize=(10, 7), c="median_house_value", cmap=plt.get_cmap("jet"),
+                     colorbar=True)
+plt.legend()
+# plt.show()
+
+"""Since the dataset is not that large, corr() can be compute to check the correlation between very attributes pairs"""
+corr_matrix = strat_train_set.corr()
+# correlatiom against median house value
+corr_MHV = corr_matrix["median_house_value"].sort_values(ascending=False)
+print(corr_MHV)
+
+"""Using Pandas to plot the correlations"""
+attributes = ["median_house_value", "median_income", "total_rooms", "housing_median_age"]
+scatter_matrix(strat_train_set[attributes], figsize=(12, 8))
+
+
+"""The most promising attribute to predict median house is median income,let zoom median income using scatter plot"""
+strat_train_set.plot(kind="scatter", x="median_income", y="median_house_value", alpha=0.1)
+plt.show()
