@@ -4,12 +4,22 @@ from six.moves import urllib
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-from zlib import crc32
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import StratifiedShuffleSplit
 from pandas.plotting import scatter_matrix
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.compose import ColumnTransformer
+from sklearn.linear_model import LinearRegression
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import RandomForestRegressor
+import joblib
+from sklearn import svm
+from sklearn.model_selection import GridSearchCV
+
 
 """ Source of data"""
 DOWNLOAD_ROOT = "https://raw.githubusercontent.com/ageron/handson-ml2/master/"
@@ -144,7 +154,7 @@ rows, 2.drop the entire attribute or column or 3. find the median and fill it in
 x_num = x.drop("ocean_proximity", axis=1)
 print(x_num)
 
-# Using SimpleImputer to find the meadian
+# Using SimpleImputer to find the median
 imputer = SimpleImputer(strategy="median")
 imputer.fit(x_num)
 
@@ -164,3 +174,155 @@ x_cat = strat_train_set[["ocean_proximity"]]
 OHT = OneHotEncoder()
 x_cat_OHT = OHT.fit_transform(x_cat).toarray()
 print(x_cat_OHT)
+
+"""Custom transformer"""
+
+rooms_ix, bedrooms_ix, population_ix, households_ix = 3, 4, 5, 6
+
+
+class CombinedAttributesAdder(BaseEstimator, TransformerMixin):
+
+    def __init__(self, add_bedrooms_per_room = True): # no *args or **kargs
+        self.add_bedrooms_per_room = add_bedrooms_per_room
+
+    def fit(self, X, y=None):
+        return self # nothing else to do
+
+    def transform(self, X, y=None):
+        rooms_per_household = X[:, rooms_ix] / X[:, households_ix]
+        population_per_household = X[:, population_ix] / X[:, households_ix]
+        if self.add_bedrooms_per_room:
+            bedrooms_per_room = X[:, bedrooms_ix] / X[:, rooms_ix]
+            return np.c_[X, rooms_per_household, population_per_household,bedrooms_per_room]
+        else:
+            return np.c_[X, rooms_per_household, population_per_household]
+
+
+attr_adder = CombinedAttributesAdder(add_bedrooms_per_room=False)
+housing_extra_attribs = attr_adder.transform(strat_train_set.values)
+print(housing_extra_attribs)
+
+
+"""Creating a pipeline for data transformation"""
+num_pipeline = Pipeline([
+    ('imputer', SimpleImputer(strategy="median")),
+    ('attribs_adder', CombinedAttributesAdder()),
+    ('std_scaler', MinMaxScaler()),
+    ])
+
+x_num_trans = num_pipeline.fit_transform(x_num)
+print()
+
+"""Handling both categorical and numerical columns at once"""
+num_attribs = list(x_num)
+cat_attribs = ["ocean_proximity"]
+
+full_pipeline = ColumnTransformer([
+    ("num", num_pipeline, num_attribs),
+    ("cat", OneHotEncoder(), cat_attribs),
+    ])
+housing_prepared = full_pipeline.fit_transform(x)
+print(housing_prepared)
+
+"""Training and Evaluating Training Set"""
+l_reg = LinearRegression()
+l_reg.fit(housing_prepared, y)
+
+"""Try some data on the model"""
+some_data = x.iloc[:5]
+some_labels = y.iloc[:5]
+some_pre = full_pipeline.transform(some_data)
+
+print("Predictions", l_reg.predict(some_pre))
+print("Labels", list[some_labels])
+
+d_reg = DecisionTreeRegressor()
+d_reg.fit(housing_prepared, y)
+
+print("Predictions", d_reg.predict(some_pre))
+print("Labels", list[some_labels])
+
+rand_reg = RandomForestRegressor()
+rand_reg.fit(housing_prepared, y)
+
+print("Predictions", rand_reg.predict(some_pre))
+print("Labels", list[some_labels])
+
+"""Save model"""
+joblib.dump(rand_reg, "my_model.joblib")
+
+"""Fine Tuning and best model selection"""
+
+model_param = {
+    # "svm": {
+    #     "model": svm.SVC(gamma="auto"),
+    #     "params": {
+    #         "C": [1, 10, 20],
+    #         "kernel": ["rbf", "linear"]
+    #     }
+    # },
+
+    "random_forest": {
+        "model": RandomForestRegressor(),
+        "params": [
+            {
+            "n_estimators": [1, 5, 45],
+            "max_features": [2, 4, 6, 16]
+            },
+            {
+            "bootstrap": [False],
+            "n_estimators": [3, 10],
+            "max_features": [2, 3, 4]
+            }
+            ]
+
+        },
+    # "linear_regression": {
+    #     "model": LinearRegression(),
+    #     "params": {
+    #         "C": [1, 5, 10],
+    #
+    #     }
+    #
+    # }
+}
+
+
+#Iterate through json object, use the GridSearchCV to select the best score, model and parameterd
+scores = []
+#
+for model_name, model_parameter in model_param.items():
+    clf = GridSearchCV(model_parameter["model"], model_parameter["params"], cv=5, return_train_score=False)
+    clf.fit(housing_prepared, y)
+
+    scores.append({
+        "model": model_name,
+        "best_score": clf.best_score_,
+        "best_params": clf.best_params_
+    })
+
+
+# Convert the scores list into pandas DataFrame
+df = pd.DataFrame(scores)
+print(df)
+print()
+
+X_test = strat_test_set.drop("median_house_value", axis=1)
+y_test = strat_test_set["median_house_value"].copy()
+x_num = X_test.drop("ocean_proximity", axis=1)
+
+X_test_prepared = full_pipeline.transform(X_test)
+
+"""Evaluate the model on the best dataset"""
+final_model = clf.best_estimator_
+
+
+
+final_predictions = final_model.predict(X_test_prepared)
+print(final_predictions)
+print()
+
+# Check the score
+model_score = final_model.score(final_predictions, y_test)
+print(model_score)
+
